@@ -1,10 +1,10 @@
-"""DSC 5401 Home Assistant integration.
+"""DSC IT-100 Home Assistant integration.
 
 Top-level entry that:
   - opens the serial connection
   - creates the coordinator
   - forwards to sensor + binary_sensor platforms
-  - registers the `dsc5401.set_clock` and `dsc5401.send_command` services
+  - registers the `dsc_it100.set_clock` and `dsc_it100.send_command` services
   - resolves the optional linked AlarmDecoder entity into a device_id so
     our entities can attach to the same device card
 """
@@ -34,8 +34,8 @@ from .const import (
     DEFAULT_BAUDRATE,
     DOMAIN,
 )
-from .coordinator import DSC5401Coordinator
-from .dsc import DSC5401Connection
+from .coordinator import DSCIT100Coordinator
+from .dsc import DSCIT100Connection
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ SEND_COMMAND_SCHEMA = vol.Schema(
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up DSC 5401 from a config entry."""
+    """Set up DSC IT-100 from a config entry."""
     port = entry.data[CONF_PORT]
     baudrate = int(entry.data.get(CONF_BAUDRATE, DEFAULT_BAUDRATE))
     linked_entity_id = entry.data.get(CONF_LINKED_ENTITY)
@@ -63,8 +63,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     partition_names = entry.options.get(CONF_PARTITION_NAMES, {})
 
     # Raw RX/TX framing is logged via _LOGGER.debug — enable it by setting
-    # the `custom_components.dsc5401` logger to DEBUG (see README).
-    connection = DSC5401Connection(port, baudrate)
+    # the `custom_components.dsc_it100` logger to DEBUG (see README).
+    connection = DSCIT100Connection(port, baudrate)
     try:
         await connection.connect()
     except FileNotFoundError as exc:
@@ -72,7 +72,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except OSError as exc:
         raise ConfigEntryNotReady(f"Cannot open {port}: {exc}") from exc
 
-    coordinator = DSC5401Coordinator(
+    coordinator = DSCIT100Coordinator(
         hass=hass,
         entry_id=entry.entry_id,
         connection=connection,
@@ -110,7 +110,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         data = hass.data[DOMAIN].pop(entry.entry_id, {})
-        conn: DSC5401Connection | None = data.get(DATA_CONNECTION)
+        conn: DSCIT100Connection | None = data.get(DATA_CONNECTION)
         if conn:
             await conn.disconnect()
 
@@ -138,7 +138,7 @@ def _resolve_device_info(
 
     If `linked_entity_id` resolves to an existing device, re-use that
     device's identifiers so HA merges our entities into the same device.
-    Otherwise build a standalone DSC 5401 device.
+    Otherwise build a standalone DSC IT-100 device.
     """
     if linked_entity_id:
         ent_reg = er.async_get(hass)
@@ -151,7 +151,7 @@ def _resolve_device_info(
                 # name/manufacturer/model when we don't set them here.
                 return DeviceInfo(identifiers=set(dev_entry.identifiers))
         _LOGGER.warning(
-            "Linked entity %s has no resolvable device; DSC 5401 entities "
+            "Linked entity %s has no resolvable device; DSC IT-100 entities "
             "will be created on a standalone device instead",
             linked_entity_id,
         )
@@ -159,7 +159,7 @@ def _resolve_device_info(
     # Standalone fallback — one device per config entry
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
-        name="DSC 5401",
+        name="DSC IT-100",
         manufacturer="DSC",
         model="PC5401",
     )
@@ -182,7 +182,7 @@ def _register_services(hass: HomeAssistant) -> None:
         day = now.day
         year_2d = now.year % 100
         for entry_data in hass.data[DOMAIN].values():
-            conn: DSC5401Connection = entry_data[DATA_CONNECTION]
+            conn: DSCIT100Connection = entry_data[DATA_CONNECTION]
             try:
                 await conn.set_clock(hour, minute, month, day, year_2d)
                 _LOGGER.info(
@@ -197,7 +197,7 @@ def _register_services(hass: HomeAssistant) -> None:
         code = call.data["code"]
         data = call.data.get("data", "")
         for entry_data in hass.data[DOMAIN].values():
-            conn: DSC5401Connection = entry_data[DATA_CONNECTION]
+            conn: DSCIT100Connection = entry_data[DATA_CONNECTION]
             try:
                 await conn.send(code, data)
             except OSError as exc:
@@ -206,7 +206,7 @@ def _register_services(hass: HomeAssistant) -> None:
     async def _clear_duress(_call: ServiceCall) -> None:
         """Manually clear the latched duress flag."""
         for entry_data in hass.data[DOMAIN].values():
-            coordinator: DSC5401Coordinator = entry_data[DATA_COORDINATOR]
+            coordinator: DSCIT100Coordinator = entry_data[DATA_COORDINATOR]
             coordinator.reset_duress()
 
     hass.services.async_register(DOMAIN, SERVICE_SET_CLOCK, _set_clock)

@@ -8,7 +8,7 @@ set_clock:
 send_command:
   name: Send raw command
   description: >-
-    Send a raw DSC API command to the panel. The DSC 5401 module appends
+    Send a raw DSC API command to the panel. The DSC IT-100 module appends
     the checksum and CR/LF framing for you. Advanced use only — see the
     DSC IT-100 Developer's Manual for valid command codes.
   fields:

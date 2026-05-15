@@ -1,4 +1,4 @@
-"""DSC 5401 binary_sensor platform.
+"""DSC IT-100 binary_sensor platform.
 
 Creates one binary_sensor per trouble category (panel battery, AC, bell, TLM,
 FTC, keybus, tamper, fire trouble, etc.) plus a latching Duress Alarm
@@ -24,7 +24,7 @@ from .const import (
     DOMAIN,
     TROUBLE_LABELS,
 )
-from .coordinator import DSC5401Coordinator, signal_update
+from .coordinator import DSCIT100Coordinator, signal_update
 
 # Device-class assignments — the panel/AC/battery/bell troubles are best
 # represented as PROBLEM; fire trouble is a dedicated FIRE class so the UI
@@ -55,7 +55,7 @@ async def async_setup_entry(
 ) -> None:
     """Create a trouble binary_sensor for each known DSC trouble key."""
     data = hass.data[DOMAIN][entry.entry_id]
-    coordinator: DSC5401Coordinator = data[DATA_COORDINATOR]
+    coordinator: DSCIT100Coordinator = data[DATA_COORDINATOR]
     device_info: DeviceInfo = data[DATA_LINKED_DEVICE_ID]
 
     entities: list = [
@@ -75,7 +75,7 @@ class DSCTroubleBinarySensor(BinarySensorEntity):
 
     def __init__(
         self,
-        coordinator: DSC5401Coordinator,
+        coordinator: DSCIT100Coordinator,
         entry_id: str,
         key: str,
         label: str,
@@ -110,7 +110,7 @@ class DSCDuressBinarySensor(BinarySensorEntity):
     """Latching duress-alarm sensor (DSC code 620).
 
     Stays ON after a duress code is entered until cleared by the
-    `dsc5401.clear_duress` service. We deliberately don't auto-restore —
+    `dsc_it100.clear_duress` service. We deliberately don't auto-restore —
     a silently-cleared duress would defeat the point of the alarm.
     """
 

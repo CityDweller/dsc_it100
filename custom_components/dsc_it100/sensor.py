@@ -1,4 +1,4 @@
-"""DSC 5401 sensor platform.
+"""DSC IT-100 sensor platform.
 
 Creates user-attribution and diagnostic sensors that attach to the linked
 AlarmDecoder device (if configured).
@@ -30,7 +30,7 @@ from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DATA_COORDINATOR, DATA_LINKED_DEVICE_ID, DOMAIN
-from .coordinator import DSC5401Coordinator, signal_update
+from .coordinator import DSCIT100Coordinator, signal_update
 
 
 async def async_setup_entry(
@@ -39,7 +39,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     data = hass.data[DOMAIN][entry.entry_id]
-    coordinator: DSC5401Coordinator = data[DATA_COORDINATOR]
+    coordinator: DSCIT100Coordinator = data[DATA_COORDINATOR]
     device_info: DeviceInfo = data[DATA_LINKED_DEVICE_ID]
 
     async_add_entities(
@@ -65,7 +65,7 @@ class _DSCBaseSensor(SensorEntity):
 
     def __init__(
         self,
-        coordinator: DSC5401Coordinator,
+        coordinator: DSCIT100Coordinator,
         entry_id: str,
         device_info: DeviceInfo,
         key: str,

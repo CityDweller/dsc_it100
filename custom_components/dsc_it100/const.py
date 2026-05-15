@@ -1,8 +1,8 @@
-"""Constants for the DSC 5401 integration."""
+"""Constants for the DSC IT-100 integration."""
 
 from __future__ import annotations
 
-DOMAIN = "dsc5401"
+DOMAIN = "dsc_it100"
 
 # Config entry data keys
 CONF_PORT = "port"

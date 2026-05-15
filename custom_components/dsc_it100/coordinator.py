@@ -1,5 +1,5 @@
 """
-DSC 5401 / IT-100 coordinator.
+DSC IT-100 coordinator.
 
 Owns the serial connection, parses inbound events into structured state, and
 signals platform entities when something they care about changes.
@@ -23,7 +23,7 @@ State tracked
 - `last_op_event`            most recent operational/diagnostic event
                              (failed-to-arm, invalid code, keypad lockout, …)
 - `duress_active`            True after a 620 (latched until manually reset
-                             via the `dsc5401.send_command` service or HA
+                             via the `dsc_it100.send_command` service or HA
                              restart — duress is too important to auto-clear)
 - `recent_events`            ring buffer of the last RECENT_EVENTS_MAX events
                              with timestamp, code, name, partition, user
@@ -67,7 +67,7 @@ from .const import (
     RECENT_EVENTS_MAX,
     TROUBLE_EVENTS,
 )
-from .dsc import DSC5401Connection
+from .dsc import DSCIT100Connection
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ ANON_ACTIONS = {
 
 @dataclass
 class DSCState:
-    """Shared state read by all DSC 5401 entities."""
+    """Shared state read by all DSC IT-100 entities."""
 
     troubles: dict[str, bool] = field(default_factory=dict)
 
@@ -123,14 +123,14 @@ class DSCState:
     )
 
 
-class DSC5401Coordinator:
+class DSCIT100Coordinator:
     """Translate raw frames into DSCState changes; notify entities."""
 
     def __init__(
         self,
         hass: HomeAssistant,
         entry_id: str,
-        connection: DSC5401Connection,
+        connection: DSCIT100Connection,
         user_names: dict[str, str],
         partition_names: dict[str, str],
     ) -> None:

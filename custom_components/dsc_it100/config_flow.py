@@ -1,9 +1,9 @@
-"""Config flow for the DSC 5401 integration.
+"""Config flow for the DSC IT-100 integration.
 
 Three steps:
   1. user      — pick serial port + baud rate
   2. link      — (optional) pick an AlarmDecoder alarm_control_panel entity to
-                 attach our DSC 5401 entities to. The picked entity's device
+                 attach our DSC IT-100 entities to. The picked entity's device
                  becomes the parent device for all our binary_sensors and
                  sensors, so they show up in the same device card as the
                  panel itself.
@@ -42,7 +42,7 @@ _LOGGER = logging.getLogger(__name__)
 BAUD_RATES = ["1200", "2400", "4800", "9600", "19200", "38400", "57600", "115200"]
 
 
-class DSC5401ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class DSCIT100ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Initial UI setup wizard."""
 
     VERSION = 1
@@ -109,7 +109,7 @@ class DSC5401ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         We don't restrict by integration; user picks whichever
         alarm_control_panel they want to attach DSC trouble/user data to. If
-        they skip, our entities live on their own dsc5401 device.
+        they skip, our entities live on their own dsc_it100 device.
         """
         if user_input is not None:
             self._linked_entity_id = user_input.get(CONF_LINKED_ENTITY) or None
@@ -130,7 +130,7 @@ class DSC5401ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _create_entry(self) -> config_entries.ConfigFlowResult:
         return self.async_create_entry(
-            title=f"DSC 5401 ({self._port})",
+            title=f"DSC IT-100 ({self._port})",
             data={
                 CONF_PORT: self._port,
                 CONF_BAUDRATE: self._baudrate,
@@ -148,11 +148,11 @@ class DSC5401ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
-    ) -> DSC5401OptionsFlow:
-        return DSC5401OptionsFlow(config_entry)
+    ) -> DSCIT100OptionsFlow:
+        return DSCIT100OptionsFlow(config_entry)
 
 
-class DSC5401OptionsFlow(config_entries.OptionsFlow):
+class DSCIT100OptionsFlow(config_entries.OptionsFlow):
     """Edit linked entity + user-code names after initial setup."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:

@@ -77,7 +77,7 @@ def verify_frame(frame: str) -> tuple[str, str] | None:
     return code, data
 
 
-class DSC5401Connection:
+class DSCIT100Connection:
     """Async serial connection to a DSC PC5401 interface.
 
     Opens a serialx connection, reads frames in a background task, validates
@@ -85,7 +85,7 @@ class DSC5401Connection:
     registered callback.
 
     Lifecycle:
-        conn = DSC5401Connection(port, baudrate, on_frame, debug=False)
+        conn = DSCIT100Connection(port, baudrate, on_frame, debug=False)
         await conn.connect()
         ...
         await conn.send("000")          # poll
@@ -122,7 +122,7 @@ class DSC5401Connection:
             stopbits=STOP_BITS,
         )
         self._closed = False
-        _LOGGER.info("DSC 5401 connected on %s @ %d baud", self._port, self._baudrate)
+        _LOGGER.info("DSC IT-100 connected on %s @ %d baud", self._port, self._baudrate)
         self._read_task = asyncio.ensure_future(self._read_loop())
 
         # Send a Poll first — the Perl module notes the first command often
@@ -133,7 +133,7 @@ class DSC5401Connection:
             await asyncio.sleep(0.25)
             await self.send("001")   # initial StatusReport
         except OSError as exc:
-            _LOGGER.warning("DSC 5401 initial poll failed: %s", exc)
+            _LOGGER.warning("DSC IT-100 initial poll failed: %s", exc)
 
     async def disconnect(self) -> None:
         """Stop the read loop and close the port."""
@@ -150,7 +150,7 @@ class DSC5401Connection:
                 await self._writer.wait_closed()
             except Exception:  # noqa: BLE001
                 pass
-        _LOGGER.info("DSC 5401 disconnected")
+        _LOGGER.info("DSC IT-100 disconnected")
 
     # ── Send ─────────────────────────────────────────────────────────────────
 
@@ -161,15 +161,15 @@ class DSC5401Connection:
         SetDateTime) and any required data. Checksum and framing are added.
         """
         if not self._writer:
-            raise RuntimeError("DSC 5401 not connected")
+            raise RuntimeError("DSC IT-100 not connected")
         frame = build_frame(code, data)
         async with self._write_lock:
-            _LOGGER.debug("DSC 5401 TX raw: %r", frame)
+            _LOGGER.debug("DSC IT-100 TX raw: %r", frame)
             self._writer.write(frame)
             try:
                 await self._writer.drain()
             except OSError as exc:
-                _LOGGER.error("DSC 5401 write failed: %s", exc)
+                _LOGGER.error("DSC IT-100 write failed: %s", exc)
                 raise
 
     # ── Receive ──────────────────────────────────────────────────────────────
@@ -183,12 +183,12 @@ class DSC5401Connection:
                 chunk = await self._reader.read(256)
                 if not chunk:
                     # EOF — port closed underneath us
-                    _LOGGER.warning("DSC 5401 serial port closed by peer")
+                    _LOGGER.warning("DSC IT-100 serial port closed by peer")
                     break
 
                 # Debug mode (logger set to DEBUG) → log every raw chunk
                 # exactly as received from the serial port.
-                _LOGGER.debug("DSC 5401 RX raw: %r", chunk)
+                _LOGGER.debug("DSC IT-100 RX raw: %r", chunk)
 
                 buf += chunk
                 while TERMINATOR in buf:
@@ -198,21 +198,21 @@ class DSC5401Connection:
         except asyncio.CancelledError:
             pass
         except OSError as exc:
-            _LOGGER.error("DSC 5401 serial I/O error: %s", exc)
+            _LOGGER.error("DSC IT-100 serial I/O error: %s", exc)
 
     async def _handle_line(self, line: bytes) -> None:
         """Decode, verify checksum, dispatch a single frame."""
         try:
             frame = line.decode("ascii", errors="ignore").strip()
         except UnicodeDecodeError:
-            _LOGGER.warning("DSC 5401 non-ascii frame: %r", line)
+            _LOGGER.warning("DSC IT-100 non-ascii frame: %r", line)
             return
         if not frame:
             return
 
         result = verify_frame(frame)
         if result is None:
-            _LOGGER.warning("DSC 5401 invalid frame or checksum: %r", frame)
+            _LOGGER.warning("DSC IT-100 invalid frame or checksum: %r", frame)
             return
 
         code, data = result
@@ -223,7 +223,7 @@ class DSC5401Connection:
                     await ret
             except Exception:  # noqa: BLE001
                 _LOGGER.exception(
-                    "DSC 5401 frame handler raised for code=%s data=%r", code, data
+                    "DSC IT-100 frame handler raised for code=%s data=%r", code, data
                 )
 
     # ── Convenience commands ─────────────────────────────────────────────────

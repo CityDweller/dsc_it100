@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "DSC 5401 serial port",
+        "title": "DSC IT-100 serial port",
         "description": "Connect to the DSC PC5401 RS-232 interface board. Use a local USB serial port, an rfc2217:// URL, or an esphome:// serial proxy.",
         "data": {
           "port": "Serial port",
@@ -11,7 +11,7 @@
       },
       "link": {
         "title": "Link to AlarmDecoder",
-        "description": "Optionally pick an existing alarm_control_panel entity (typically the one created by the AlarmDecoder integration). DSC 5401 trouble and user-attribution entities will be attached to the same device card. Leave blank to use a standalone device.",
+        "description": "Optionally pick an existing alarm_control_panel entity (typically the one created by the AlarmDecoder integration). DSC IT-100 trouble and user-attribution entities will be attached to the same device card. Leave blank to use a standalone device.",
         "data": {
           "linked_entity_id": "Alarm panel entity"
         }
@@ -22,13 +22,13 @@
       "cannot_connect": "Could not open the serial port."
     },
     "abort": {
-      "single_instance_allowed": "Only one DSC 5401 instance is supported."
+      "single_instance_allowed": "Only one DSC IT-100 instance is supported."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "DSC 5401 options",
+        "title": "DSC IT-100 options",
         "description": "User codes and partitions can be given friendly names. Enter one `code: name` pair per line, e.g.\n\n```\n0040: Gaetan\n0001: Master\n```",
         "data": {
           "linked_entity_id": "Linked alarm panel entity",

@@ -1,7 +1,7 @@
-# DSC 5401 Home Assistant Integration
+# DSC IT-100 Home Assistant Integration
 
-A custom Home Assistant integration for the DSC PC5401 (and IT-100) serial
-interface boards used with DSC PowerSeries alarm panels. Designed to
+A custom Home Assistant integration for the DSC IT-100 (and compatible
+PC5401) serial interface boards used with DSC PowerSeries alarm panels. Designed to
 **complement** the existing
 [AlarmDecoder](https://www.home-assistant.io/integrations/alarmdecoder/)
 integration rather than replace it.
@@ -26,14 +26,14 @@ This integration adds the things AlarmDecoder doesn't:
 ## Requirements
 
 - Home Assistant **2026.5** or newer (uses the `serialx` async serial library)
-- A DSC PC5401 (or compatible) serial interface board connected to a serial
+- A DSC IT-100 (or compatible PC5401) serial interface board connected to a serial
   port reachable from HA — local USB, `rfc2217://`, or `esphome://`
 
 ## Installation
 
-1. Copy `custom_components/dsc5401` into your HA `custom_components/` folder
+1. Copy `custom_components/dsc_it100` into your HA `custom_components/` folder
 2. Restart Home Assistant
-3. Add the integration via **Settings → Devices & Services → Add Integration → DSC 5401**
+3. Add the integration via **Settings → Devices & Services → Add Integration → DSC IT-100**
 
 ## Configuration
 
@@ -41,7 +41,7 @@ The config flow has two steps:
 
 1. **Serial port** — pick the port and baud rate (9600 default)
 2. **Link to AlarmDecoder** *(optional)* — select an existing AlarmDecoder
-   `alarm_control_panel` entity. When linked, all DSC 5401 entities are
+   `alarm_control_panel` entity. When linked, all DSC IT-100 entities are
    attached to the same device card as the AlarmDecoder panel.
 
 You can map DSC user codes to friendly names via the options flow
@@ -49,7 +49,7 @@ You can map DSC user codes to friendly names via the options flow
 
 ## Services
 
-### `dsc5401.set_clock`
+### `dsc_it100.set_clock`
 
 Sets the DSC panel's internal clock to the current HA time. Recommend running
 this daily (e.g. at 3 AM) via an automation to keep the panel synchronised and
@@ -62,10 +62,10 @@ automation:
       platform: time
       at: "03:00:00"
     action:
-      service: dsc5401.set_clock
+      service: dsc_it100.set_clock
 ```
 
-### `dsc5401.send_command`
+### `dsc_it100.send_command`
 
 Advanced: send any raw DSC API command to the panel. See the
 [DSC IT-100 Developer's Manual](https://cms.dsc.com/download.php?t=1&id=16238)
@@ -79,10 +79,10 @@ To log every raw frame received from the panel:
 logger:
   default: warning
   logs:
-    custom_components.dsc5401: debug
+    custom_components.dsc_it100: debug
 ```
 
-### `dsc5401.clear_duress`
+### `dsc_it100.clear_duress`
 
 Clears the latched Duress Alarm binary sensor. The DSC panel reports a
 duress alarm once (code 620) and does not emit a restore code, so this

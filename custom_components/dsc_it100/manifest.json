@@ -1,9 +1,9 @@
 {
-  "domain": "dsc5401",
-  "name": "DSC 5401",
+  "domain": "dsc_it100",
+  "name": "DSC IT-100",
   "version": "0.1.0",
-  "documentation": "https://github.com/CityDweller/dsc5401",
-  "issue_tracker": "https://github.com/CityDweller/dsc5401/issues",
+  "documentation": "https://github.com/CityDweller/dsc_it100",
+  "issue_tracker": "https://github.com/CityDweller/dsc_it100/issues",
   "requirements": ["serialx>=0.1.0"],
   "dependencies": [],
   "codeowners": [],
