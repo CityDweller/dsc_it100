@@ -8,3 +8,4 @@ venv/
 .claude/
 .DS_Store
 *.log
+.commit-msg.tmp
