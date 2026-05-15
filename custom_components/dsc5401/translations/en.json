@@ -56,6 +56,10 @@
           "description": "Optional argument string for the command."
         }
       }
+    },
+    "clear_duress": {
+      "name": "Clear duress alarm",
+      "description": "Manually clear the latched Duress Alarm binary_sensor."
     }
   }
 }

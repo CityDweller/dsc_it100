@@ -1,8 +1,9 @@
 """DSC 5401 binary_sensor platform.
 
 Creates one binary_sensor per trouble category (panel battery, AC, bell, TLM,
-FTC, tamper, fire trouble, etc.). All entities attach to the linked
-AlarmDecoder device (if configured) so they appear on the same device card.
+FTC, keybus, tamper, fire trouble, etc.) plus a latching Duress Alarm
+sensor. All entities attach to the linked AlarmDecoder device (if
+configured) so they appear on the same device card.
 """
 
 from __future__ import annotations
@@ -43,6 +44,7 @@ _DEVICE_CLASSES: dict[str, BinarySensorDeviceClass] = {
     "home_automation": BinarySensorDeviceClass.PROBLEM,
     "trouble_status": BinarySensorDeviceClass.PROBLEM,
     "fire_trouble": BinarySensorDeviceClass.PROBLEM,
+    "keybus_fault": BinarySensorDeviceClass.PROBLEM,
 }
 
 
@@ -56,10 +58,11 @@ async def async_setup_entry(
     coordinator: DSC5401Coordinator = data[DATA_COORDINATOR]
     device_info: DeviceInfo = data[DATA_LINKED_DEVICE_ID]
 
-    entities = [
+    entities: list = [
         DSCTroubleBinarySensor(coordinator, entry.entry_id, key, label, device_info)
         for key, label in TROUBLE_LABELS.items()
     ]
+    entities.append(DSCDuressBinarySensor(coordinator, entry.entry_id, device_info))
     async_add_entities(entities)
 
 
@@ -88,6 +91,56 @@ class DSCTroubleBinarySensor(BinarySensorEntity):
     @property
     def is_on(self) -> bool:
         return self._coordinator.state.troubles.get(self._key, False)
+
+    async def async_added_to_hass(self) -> None:
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                signal_update(self._coordinator.entry_id),
+                self._handle_update,
+            )
+        )
+
+    @callback
+    def _handle_update(self) -> None:
+        self.async_write_ha_state()
+
+
+class DSCDuressBinarySensor(BinarySensorEntity):
+    """Latching duress-alarm sensor (DSC code 620).
+
+    Stays ON after a duress code is entered until cleared by the
+    `dsc5401.clear_duress` service. We deliberately don't auto-restore —
+    a silently-cleared duress would defeat the point of the alarm.
+    """
+
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _attr_name = "Duress Alarm"
+    _attr_device_class = BinarySensorDeviceClass.SAFETY
+
+    def __init__(
+        self,
+        coordinator,
+        entry_id: str,
+        device_info: DeviceInfo,
+    ) -> None:
+        self._coordinator = coordinator
+        self._attr_unique_id = f"{entry_id}_duress"
+        self._attr_device_info = device_info
+
+    @property
+    def is_on(self) -> bool:
+        return self._coordinator.state.duress_active
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str | None]:
+        st = self._coordinator.state
+        return {
+            "user_id": st.duress_user_id,
+            "user": st.duress_user_name,
+            "time": st.duress_time.isoformat() if st.duress_time else None,
+        }
 
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(

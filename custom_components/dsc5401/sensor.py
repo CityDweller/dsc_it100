@@ -1,17 +1,21 @@
 """DSC 5401 sensor platform.
 
-Creates user-attribution and last-event sensors that attach to the linked
+Creates user-attribution and diagnostic sensors that attach to the linked
 AlarmDecoder device (if configured).
 
 Entities:
   - Last User           (name)
   - Last User Code      (4-digit user code)
   - Last User Action    (armed / disarmed / special_armed / partial_armed /
-                         special_disarmed)
+                         special_disarmed / duress)
   - Last Arm Mode       (away / stay / zero_entry_away / zero_entry_stay)
   - Last Event          (timestamp of most recent DSC frame)
   - Last Event Code     (3-digit DSC code, e.g. "700")
   - Last Error          (most recent 501/502 error text, if any)
+  - Last Op Event       (most recent operational event: failed-to-arm,
+                         invalid code, keypad lockout, partition busy, …)
+  - Recent Events       (ring buffer of last 50 events as `recent_events`
+                         attribute; native value is the count)
 """
 
 from __future__ import annotations
@@ -47,6 +51,8 @@ async def async_setup_entry(
             DSCLastEventSensor(coordinator, entry.entry_id, device_info),
             DSCLastEventCodeSensor(coordinator, entry.entry_id, device_info),
             DSCLastErrorSensor(coordinator, entry.entry_id, device_info),
+            DSCLastOpEventSensor(coordinator, entry.entry_id, device_info),
+            DSCRecentEventsSensor(coordinator, entry.entry_id, device_info),
         ]
     )
 
@@ -175,3 +181,44 @@ class DSCLastErrorSensor(_DSCBaseSensor):
     @property
     def native_value(self) -> str | None:
         return self._coordinator.state.last_error_text
+
+
+class DSCLastOpEventSensor(_DSCBaseSensor):
+    """Last operational event (failed-to-arm, invalid code, lockout, etc.)."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry_id, device_info):
+        super().__init__(
+            coordinator, entry_id, device_info, "last_op_event", "Last Op Event"
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        return self._coordinator.state.last_op_event
+
+
+class DSCRecentEventsSensor(_DSCBaseSensor):
+    """Ring buffer of recent panel events.
+
+    Native value is the count of buffered events; the actual log lives in
+    the `recent_events` extra-state attribute. Designed for the
+    Lovelace `markdown` / `auto-entities` cards to surface a panel-event
+    history without needing a separate database.
+    """
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry_id, device_info):
+        super().__init__(
+            coordinator, entry_id, device_info, "recent_events", "Recent Events"
+        )
+
+    @property
+    def native_value(self) -> int:
+        return len(self._coordinator.state.recent_events)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        # Convert to a plain list so HA can serialise the state attribute.
+        return {"events": list(self._coordinator.state.recent_events)}

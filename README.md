@@ -1,17 +1,27 @@
 # DSC 5401 Home Assistant Integration
 
-A custom Home Assistant integration for the DSC PC5401 serial interface board
-(used with DSC PowerSeries alarm panels). Designed to **complement** the
-existing [AlarmDecoder](https://www.home-assistant.io/integrations/alarmdecoder/)
+A custom Home Assistant integration for the DSC PC5401 (and IT-100) serial
+interface boards used with DSC PowerSeries alarm panels. Designed to
+**complement** the existing
+[AlarmDecoder](https://www.home-assistant.io/integrations/alarmdecoder/)
 integration rather than replace it.
 
 AlarmDecoder already exposes the zones, partitions, and arm/disarm state.
 This integration adds the things AlarmDecoder doesn't:
 
-- **Who** armed or disarmed the panel (user name and user code)
-- **Trouble conditions** the panel reports (AC fail, low battery, bell trouble,
-  TLM, FTC, tamper, fire trouble, etc.) as binary sensors
+- **Who** armed or disarmed the panel (user name + 4-digit code)
+- **Duress alarm** with the offending user code (latched, DSC code 620)
+- **Trouble conditions** the panel reports as binary sensors: panel AC,
+  panel battery, bell circuit, phone lines 1/2, FTC, **keybus fault**,
+  device low battery, wireless key / handheld keypad low battery, general
+  tamper, home automation, system trouble status, fire trouble
+- **Operational events** for troubleshooting arming failures: invalid
+  code, function unavailable, failed to arm, partition busy, keypad
+  lockout
+- A **recent-events log** (last 50 panel events as an entity attribute)
+  for diagnostics without needing the HA history database
 - A **`set_clock`** service to sync the DSC panel's internal clock to HA time
+- A **`clear_duress`** service to manually clear a latched duress alarm
 
 ## Requirements
 
@@ -72,7 +82,21 @@ logger:
     custom_components.dsc5401: debug
 ```
 
+### `dsc5401.clear_duress`
+
+Clears the latched Duress Alarm binary sensor. The DSC panel reports a
+duress alarm once (code 620) and does not emit a restore code, so this
+integration latches the alarm ON until you explicitly clear it via this
+service.
+
 ## Credits
 
-Protocol logic adapted from Jocelyn Brouillard and Gaetan Lord's
-`DSC5401.pm` Misterhouse module.
+Protocol framing/checksum logic adapted from Jocelyn Brouillard and Gaetan
+Lord's [`DSC5401.pm`](https://github.com/hollie/misterhouse/blob/master/lib/DSC5401.pm)
+Misterhouse module.
+
+The IT-100 event-code extensions (keybus 896/897, partition busy 673,
+failed-to-arm 672, etc.) were cross-referenced against the event-code
+table in [kostko/dsc-it100](https://github.com/kostko/dsc-it100) (AGPL-3.0).
+Only the factual numeric event-code → name mapping was taken; no
+copyrightable code was incorporated from that project.

@@ -43,6 +43,7 @@ PLATFORMS = ["binary_sensor", "sensor"]
 
 SERVICE_SET_CLOCK = "set_clock"
 SERVICE_SEND_COMMAND = "send_command"
+SERVICE_CLEAR_DURESS = "clear_duress"
 
 SEND_COMMAND_SCHEMA = vol.Schema(
     {
@@ -117,6 +118,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if not hass.data[DOMAIN]:
             hass.services.async_remove(DOMAIN, SERVICE_SET_CLOCK)
             hass.services.async_remove(DOMAIN, SERVICE_SEND_COMMAND)
+            hass.services.async_remove(DOMAIN, SERVICE_CLEAR_DURESS)
 
     return unload_ok
 
@@ -201,7 +203,14 @@ def _register_services(hass: HomeAssistant) -> None:
             except OSError as exc:
                 _LOGGER.error("DSC send_command failed: %s", exc)
 
+    async def _clear_duress(_call: ServiceCall) -> None:
+        """Manually clear the latched duress flag."""
+        for entry_data in hass.data[DOMAIN].values():
+            coordinator: DSC5401Coordinator = entry_data[DATA_COORDINATOR]
+            coordinator.reset_duress()
+
     hass.services.async_register(DOMAIN, SERVICE_SET_CLOCK, _set_clock)
     hass.services.async_register(
         DOMAIN, SERVICE_SEND_COMMAND, _send_command, schema=SEND_COMMAND_SCHEMA
     )
+    hass.services.async_register(DOMAIN, SERVICE_CLEAR_DURESS, _clear_duress)

@@ -49,6 +49,27 @@ EVT_PARTIAL_CLOSING = "702"       # data = <part1>
 EVT_USER_OPENING = "750"          # data = <part1><user4>
 EVT_SPECIAL_OPENING = "751"       # data = <part1>
 
+# Special alarms (IT-100, also present on PC5401)
+EVT_DURESS_ALARM = "620"          # data = <part1><user4> — duress code entered
+EVT_FIRE_KEY_ALARM = "621"
+EVT_FIRE_KEY_RESTORED = "622"
+EVT_AUX_KEY_ALARM = "623"
+EVT_AUX_KEY_RESTORED = "624"
+EVT_PANIC_KEY_ALARM = "625"
+EVT_PANIC_KEY_RESTORED = "626"
+
+# Operational / diagnostic events — not "troubles" but useful for
+# troubleshooting arming failures and security events. IT-100 extends the
+# 5401 set with 659/660/672/673; we include them all.
+EVT_KEYPAD_LOCKOUT = "658"        # data = <part1>
+EVT_KEYPAD_BLANKING = "659"
+EVT_COMMAND_OUTPUT = "660"
+EVT_INVALID_CODE = "670"          # data = <part1>
+EVT_FUNCTION_UNAVAILABLE = "671"  # data = <part1>
+EVT_FAILED_TO_ARM = "672"         # data = <part1>  (IT-100 only)
+EVT_PARTITION_BUSY = "673"        # data = <part1>  (IT-100 only)
+EVT_CODE_REQUIRED = "900"         # panel is prompting for a user code
+
 # Arm mode codes (cmd 652 second byte)
 ARM_MODES = {
     "0": "away",
@@ -88,6 +109,10 @@ TROUBLE_EVENTS: dict[str, tuple[str, bool]] = {
     "841": ("trouble_status", True),
     "842": ("fire_trouble", False),
     "843": ("fire_trouble", True),
+    # IT-100 additions (event-code map from kostko/dsc-it100 — facts, not
+    # creative content; no AGPL contamination).
+    "896": ("keybus_fault", False),
+    "897": ("keybus_fault", True),
 }
 
 # Friendly labels for each trouble key (used by binary_sensor names)
@@ -106,7 +131,94 @@ TROUBLE_LABELS: dict[str, str] = {
     "home_automation": "Home Automation Trouble",
     "trouble_status": "System Trouble Status",
     "fire_trouble": "Fire Trouble Alarm",
+    "keybus_fault": "Keybus Fault",
 }
+
+# Full event-name lookup, used to populate the recent-events log with human
+# readable descriptions. Sourced from the PC5401 spec (Misterhouse
+# DSC5401.pm) and extended with IT-100 codes per kostko/dsc-it100.
+EVENT_NAMES: dict[str, str] = {
+    "500": "Command Acknowledge",
+    "501": "Command Error",
+    "502": "System Error",
+    "550": "Time/Date Broadcast",
+    "560": "Ring Detected",
+    "561": "Indoor Temperature Broadcast",
+    "562": "Outdoor Temperature Broadcast",
+    "570": "Broadcast Labels",
+    "580": "Baud Rate Set",
+    "601": "Zone Alarm",
+    "602": "Zone Alarm Restore",
+    "603": "Zone Tamper",
+    "604": "Zone Tamper Restore",
+    "605": "Zone Fault",
+    "606": "Zone Fault Restore",
+    "609": "Zone Open",
+    "610": "Zone Restored",
+    "620": "Duress Alarm",
+    "621": "Fire Key Alarm",
+    "622": "Fire Key Restored",
+    "623": "Auxiliary Key Alarm",
+    "624": "Auxiliary Key Restored",
+    "625": "Panic Key Alarm",
+    "626": "Panic Key Restored",
+    "631": "Auxiliary Input Alarm",
+    "632": "Auxiliary Input Restored",
+    "650": "Partition Ready",
+    "651": "Partition Not Ready",
+    "652": "Partition Armed",
+    "653": "Partition Ready To Force Arm",
+    "654": "Partition In Alarm",
+    "655": "Partition Disarmed",
+    "656": "Exit Delay In Progress",
+    "657": "Entry Delay In Progress",
+    "658": "Keypad Lock-Out",
+    "659": "Keypad Blanking",
+    "660": "Command Output",
+    "670": "Invalid Code Access",
+    "671": "Function Not Available",
+    "672": "Failed To Arm",
+    "673": "Partition Busy",
+    "700": "User Closing (armed)",
+    "701": "Special Closing (system-armed)",
+    "702": "Partial Closing",
+    "750": "User Opening (disarmed)",
+    "751": "Special Opening (system-disarmed)",
+    "800": "Panel Battery Trouble",
+    "801": "Panel Battery Restored",
+    "802": "Panel AC Trouble",
+    "803": "Panel AC Restored",
+    "806": "Bell Circuit Trouble",
+    "807": "Bell Circuit Restored",
+    "810": "Phone Line 1 Trouble",
+    "811": "Phone Line 1 Restored",
+    "812": "Phone Line 2 Trouble",
+    "813": "Phone Line 2 Restored",
+    "814": "Failure To Communicate",
+    "816": "Event Buffer Near Full",
+    "821": "Device Low Battery",
+    "822": "Device Low Battery Restored",
+    "825": "Wireless Key Low Battery",
+    "826": "Wireless Key Low Battery Restored",
+    "827": "Handheld Keypad Low Battery",
+    "828": "Handheld Keypad Low Battery Restored",
+    "829": "General System Tamper",
+    "830": "General System Tamper Restored",
+    "831": "Home Automation Trouble",
+    "832": "Home Automation Trouble Restored",
+    "840": "System Trouble Status",
+    "841": "System Trouble Status Restored",
+    "842": "Fire Trouble Alarm",
+    "843": "Fire Trouble Restored",
+    "896": "Keybus Fault",
+    "897": "Keybus Fault Restored",
+    "900": "Code Required",
+    "904": "Beep Status",
+    "908": "Version Info",
+}
+
+# How many recent events to retain on the Recent Events sensor attribute
+RECENT_EVENTS_MAX = 50
 
 # Error codes returned by 501 (Command Error)
 ERROR_CODES: dict[str, str] = {

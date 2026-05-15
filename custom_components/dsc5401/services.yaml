@@ -26,3 +26,10 @@ send_command:
       example: "0830052625"
       selector:
         text:
+
+clear_duress:
+  name: Clear duress alarm
+  description: >-
+    Manually clear the latched Duress Alarm binary_sensor. Duress events
+    (DSC code 620) latch ON because the panel doesn't emit a restore code;
+    use this service after responding to a duress event.
