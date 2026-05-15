@@ -89,14 +89,20 @@ duress alarm once (code 620) and does not emit a restore code, so this
 integration latches the alarm ON until you explicitly clear it via this
 service.
 
+## License
+
+[MIT](LICENSE) — Copyright (c) 2026 Timothy Spaulding.
+
 ## Credits
 
-Protocol framing/checksum logic adapted from Jocelyn Brouillard and Gaetan
-Lord's [`DSC5401.pm`](https://github.com/hollie/misterhouse/blob/master/lib/DSC5401.pm)
-Misterhouse module.
+Protocol framing/checksum/event-handling logic was ported from
+[`DSC5401.pm`](https://github.com/hollie/misterhouse/blob/master/lib/DSC5401.pm)
+in Misterhouse (by Jocelyn Brouillard and Gaetan Lord), with extensions
+drawn from a related DSC IT-100 Misterhouse module the original author of
+this integration wrote some years ago.
 
 The IT-100 event-code extensions (keybus 896/897, partition busy 673,
-failed-to-arm 672, etc.) were cross-referenced against the event-code
-table in [kostko/dsc-it100](https://github.com/kostko/dsc-it100) (AGPL-3.0).
-Only the factual numeric event-code → name mapping was taken; no
+failed-to-arm 672, etc.) were cross-referenced against the numeric
+event-code table in [kostko/dsc-it100](https://github.com/kostko/dsc-it100)
+(AGPL-3.0). Only the factual code → name mapping was used; no
 copyrightable code was incorporated from that project.
