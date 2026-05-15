@@ -1,0 +1,61 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "DSC 5401 serial port",
+        "description": "Connect to the DSC PC5401 RS-232 interface board. Use a local USB serial port, an rfc2217:// URL, or an esphome:// serial proxy.",
+        "data": {
+          "port": "Serial port",
+          "baudrate": "Baud rate"
+        }
+      },
+      "link": {
+        "title": "Link to AlarmDecoder",
+        "description": "Optionally pick an existing alarm_control_panel entity (typically the one created by the AlarmDecoder integration). DSC 5401 trouble and user-attribution entities will be attached to the same device card. Leave blank to use a standalone device.",
+        "data": {
+          "linked_entity_id": "Alarm panel entity"
+        }
+      }
+    },
+    "error": {
+      "port_not_found": "Serial port not found.",
+      "cannot_connect": "Could not open the serial port."
+    },
+    "abort": {
+      "single_instance_allowed": "Only one DSC 5401 instance is supported."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "DSC 5401 options",
+        "description": "User codes and partitions can be given friendly names. Enter one `code: name` pair per line, e.g.\n\n```\n0040: Gaetan\n0001: Master\n```",
+        "data": {
+          "linked_entity_id": "Linked alarm panel entity",
+          "user_names_raw": "User code names",
+          "partition_names_raw": "Partition names"
+        }
+      }
+    }
+  },
+  "services": {
+    "set_clock": {
+      "name": "Set panel clock",
+      "description": "Sync the DSC panel's internal clock to Home Assistant's current local time."
+    },
+    "send_command": {
+      "name": "Send raw command",
+      "description": "Send a raw DSC API command to the panel. Advanced use only.",
+      "fields": {
+        "code": {
+          "name": "Command code",
+          "description": "Three-digit DSC API command code (e.g. 000, 010)."
+        },
+        "data": {
+          "name": "Command data",
+          "description": "Optional argument string for the command."
+        }
+      }
+    }
+  }
+}

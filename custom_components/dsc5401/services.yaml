@@ -1,0 +1,28 @@
+set_clock:
+  name: Set panel clock
+  description: >-
+    Sync the DSC panel's internal clock to Home Assistant's current local
+    time. Run daily (e.g. at 03:00) to keep the panel synchronised and to
+    handle DST transitions automatically.
+
+send_command:
+  name: Send raw command
+  description: >-
+    Send a raw DSC API command to the panel. The DSC 5401 module appends
+    the checksum and CR/LF framing for you. Advanced use only — see the
+    DSC IT-100 Developer's Manual for valid command codes.
+  fields:
+    code:
+      name: Command code
+      description: Three-digit DSC API command code (e.g. 000, 010).
+      required: true
+      example: "010"
+      selector:
+        text:
+    data:
+      name: Command data
+      description: Optional argument string for the command.
+      required: false
+      example: "0830052625"
+      selector:
+        text:
