@@ -26,6 +26,17 @@ from .const import (
 )
 from .coordinator import DSCIT100Coordinator, signal_update
 
+# Troubles that should be hidden in the entity registry by default. Users
+# without dual phone lines, wireless keys, or handheld keypads will never see
+# these go active, so we don't clutter the device card with them. Re-enable in
+# the UI per-entity if the hardware is actually present.
+_DEFAULT_DISABLED: set[str] = {
+    "tlm_line_1",
+    "tlm_line_2",
+    "wireless_key_low_battery",
+    "handheld_keypad_low_battery",
+}
+
 # Device-class assignments — the panel/AC/battery/bell troubles are best
 # represented as PROBLEM; fire trouble is a dedicated FIRE class so the UI
 # uses the right icon.
@@ -87,6 +98,8 @@ class DSCTroubleBinarySensor(BinarySensorEntity):
         self._attr_unique_id = f"{entry_id}_{key}"
         self._attr_device_info = device_info
         self._attr_device_class = _DEVICE_CLASSES.get(key)
+        if key in _DEFAULT_DISABLED:
+            self._attr_entity_registry_enabled_default = False
 
     @property
     def is_on(self) -> bool:
