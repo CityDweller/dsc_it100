@@ -31,6 +31,7 @@ from .const import (
     DATA_CONNECTION,
     DATA_COORDINATOR,
     DATA_LINKED_DEVICE_ID,
+    DATA_ZONES,
     DEFAULT_BAUDRATE,
     DOMAIN,
 )
@@ -72,12 +73,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except OSError as exc:
         raise ConfigEntryNotReady(f"Cannot open {port}: {exc}") from exc
 
+    # Discover zones from the linked AlarmDecoder device (if any). We use
+    # these to create one battery binary_sensor per zone — the DSC IT-100
+    # protocol reports per-zone low-battery via code 821 but doesn't list
+    # which zones exist, so we lean on AlarmDecoder (which knows because
+    # it's already exposing zone open/close binary_sensors).
+    zones = _discover_alarmdecoder_zones(hass, linked_entity_id)
+    if linked_entity_id and not zones:
+        _LOGGER.info(
+            "No AlarmDecoder zones discovered for %s; per-zone battery "
+            "sensors will be created dynamically on first 821 event",
+            linked_entity_id,
+        )
+
     coordinator = DSCIT100Coordinator(
         hass=hass,
         entry_id=entry.entry_id,
         connection=connection,
         user_names=user_names,
         partition_names=partition_names,
+        zones=zones,
     )
 
     # Resolve linked AlarmDecoder entity -> DeviceInfo we can hand to child
@@ -94,6 +109,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DATA_CONNECTION: connection,
         DATA_COORDINATOR: coordinator,
         DATA_LINKED_DEVICE_ID: device_info,
+        DATA_ZONES: zones,
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -127,6 +143,55 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
     """Reload on options change — handles linked-entity changes and rename
     maps in one shot."""
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+def _discover_alarmdecoder_zones(
+    hass: HomeAssistant,
+    linked_entity_id: str | None,
+) -> list[tuple[int, str]]:
+    """Return [(zone_number, zone_name), ...] discovered from AlarmDecoder.
+
+    AlarmDecoder creates one binary_sensor per zone, all attached to the
+    panel's device, with a unique_id of the form
+    `{serial_number}-zone-{N}`. We walk the linked entity's device, pick
+    out anything matching that pattern, and parse the zone number from the
+    suffix.
+
+    Returns an empty list when nothing is linked, the linked entity has no
+    device, or no entities match the pattern. The caller is expected to
+    handle the empty case (per-zone sensors simply won't be created).
+    """
+    if not linked_entity_id:
+        return []
+
+    ent_reg = er.async_get(hass)
+    linked_entry = ent_reg.async_get(linked_entity_id)
+    if not linked_entry or not linked_entry.device_id:
+        return []
+
+    zones: list[tuple[int, str]] = []
+    # Default include_disabled_entities=False is what we want: zones the
+    # user has disabled in AlarmDecoder are assumed unused, so we don't
+    # create battery sensors for them either.
+    for entity in er.async_entries_for_device(ent_reg, linked_entry.device_id):
+        if entity.domain != "binary_sensor" or not entity.unique_id:
+            continue
+        marker = "-zone-"
+        idx = entity.unique_id.rfind(marker)
+        if idx < 0:
+            continue
+        suffix = entity.unique_id[idx + len(marker):]
+        try:
+            zone_num = int(suffix)
+        except ValueError:
+            continue
+        # Prefer the user-overridden registry name, then the integration's
+        # original name; fall back to "Zone N" if both are blank.
+        name = entity.name or entity.original_name or f"Zone {zone_num}"
+        zones.append((zone_num, name))
+
+    zones.sort(key=lambda z: z[0])
+    return zones
 
 
 def _resolve_device_info(

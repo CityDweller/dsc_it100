@@ -15,6 +15,7 @@ CONF_PARTITION_NAMES = "partition_names"  # {"1": "House", ...}
 DATA_CONNECTION = "connection"
 DATA_COORDINATOR = "coordinator"
 DATA_LINKED_DEVICE_ID = "linked_device_id"
+DATA_ZONES = "zones"
 
 DEFAULT_BAUDRATE = 9600
 
@@ -95,8 +96,12 @@ TROUBLE_EVENTS: dict[str, tuple[str, bool]] = {
     "813": ("tlm_line_2", True),
     "814": ("ftc", False),               # FTC has no restore code in the API
     "816": ("buffer_near_full", False),  # no restore
-    "821": ("device_low_battery", False),
-    "822": ("device_low_battery", True),
+    # 821/822 are intentionally absent — they're handled by the dedicated
+    # per-zone battery code path in coordinator._handle_zone_low_battery,
+    # which also derives the `device_low_battery` rollup so the aggregate
+    # binary_sensor below stays correct (the trouble-event collapse was
+    # wrong anyway: a 822 for zone N would clear the aggregate even if
+    # zone M was still low).
     "825": ("wireless_key_low_battery", False),
     "826": ("wireless_key_low_battery", True),
     "827": ("handheld_keypad_low_battery", False),

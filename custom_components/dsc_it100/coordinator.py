@@ -105,6 +105,11 @@ class DSCState:
 
     troubles: dict[str, bool] = field(default_factory=dict)
 
+    # Per-zone low-battery state, keyed by integer zone number. Populated
+    # from DSC codes 821 (low) and 822 (restore). The `device_low_battery`
+    # rollup in `troubles` is derived from `any(zone_low_battery.values())`.
+    zone_low_battery: dict[int, bool] = field(default_factory=dict)
+
     last_user_name: str | None = None
     last_user_id: str | None = None
     last_user_action: str | None = None
@@ -135,19 +140,32 @@ class DSCIT100Coordinator:
         connection: DSCIT100Connection,
         user_names: dict[str, str],
         partition_names: dict[str, str],
+        zones: list[tuple[int, str]] | None = None,
     ) -> None:
         self.hass = hass
         self.entry_id = entry_id
         self.connection = connection
         self.user_names = user_names
         self.partition_names = partition_names
+        # `zones` is a list of (zone_number, zone_name) tuples discovered
+        # from the linked AlarmDecoder device at setup time. Used by the
+        # binary_sensor platform to materialise one battery entity per
+        # zone; the coordinator pre-seeds these zones to False so the
+        # entities come up in a definite OK state on first start.
+        self.zones = zones or []
 
         self.state = DSCState()
 
         # Initialise every known trouble key to False so the binary sensors
-        # come up with a definite state on first start.
+        # come up with a definite state on first start. The derived
+        # `device_low_battery` rollup is included explicitly because we no
+        # longer source it from TROUBLE_EVENTS (see const.py).
         for code, (key, _is_restore) in TROUBLE_EVENTS.items():
             self.state.troubles.setdefault(key, False)
+        self.state.troubles.setdefault("device_low_battery", False)
+
+        for zone_num, _zone_name in self.zones:
+            self.state.zone_low_battery.setdefault(zone_num, False)
 
         connection._on_frame = self.handle_frame  # noqa: SLF001
 
@@ -176,7 +194,9 @@ class DSCIT100Coordinator:
         # we handle the code specifically — gives a complete diagnostic trail.
         self._log_event(now, code, data)
 
-        if code in TROUBLE_EVENTS:
+        if code in ("821", "822"):
+            self._handle_zone_low_battery(code, data)
+        elif code in TROUBLE_EVENTS:
             self._handle_trouble(code, data)
         elif code == EVT_DURESS_ALARM:
             self._handle_duress(code, data, now)
@@ -348,3 +368,29 @@ class DSCIT100Coordinator:
 
     def _handle_partition_disarmed(self, _data: str) -> None:
         self.state.last_arm_mode = None
+
+    def _handle_zone_low_battery(self, code: str, data: str) -> None:
+        """821 / 822 — per-zone wireless low-battery state.
+
+        Data is the zone number (typically 3-digit zero-padded). We track
+        per-zone state in `zone_low_battery` and recompute the aggregate
+        `device_low_battery` rollup as `any(...)`. A zone we've never seen
+        before is added to the dict on first event, so the rollup remains
+        correct even for zones that weren't pre-discovered.
+        """
+        try:
+            zone_num = int(data.strip())
+        except (ValueError, AttributeError):
+            _LOGGER.warning("DSC %s: unparseable zone number %r", code, data)
+            return
+        is_low = code == "821"
+        self.state.zone_low_battery[zone_num] = is_low
+        self.state.troubles["device_low_battery"] = any(
+            self.state.zone_low_battery.values()
+        )
+        _LOGGER.info(
+            "DSC zone %d battery -> %s (%s)",
+            zone_num,
+            "LOW" if is_low else "OK",
+            code,
+        )
