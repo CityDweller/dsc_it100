@@ -12,8 +12,6 @@ Entities:
   - Last Event          (timestamp of most recent DSC frame)
   - Last Event Code     (3-digit DSC code, e.g. "700")
   - Last Error          (most recent 501/502 error text, if any)
-  - Last Op Event       (most recent operational event: failed-to-arm,
-                         invalid code, keypad lockout, partition busy, …)
   - Recent Events       (one-line summary of the newest event as state;
                          ring buffer of last 50 as `events` attribute and
                          buffer occupancy as `count`)
@@ -52,7 +50,6 @@ async def async_setup_entry(
             DSCLastEventSensor(coordinator, entry.entry_id, device_info),
             DSCLastEventCodeSensor(coordinator, entry.entry_id, device_info),
             DSCLastErrorSensor(coordinator, entry.entry_id, device_info),
-            DSCLastOpEventSensor(coordinator, entry.entry_id, device_info),
             DSCRecentEventsSensor(coordinator, entry.entry_id, device_info),
         ]
     )
@@ -182,21 +179,6 @@ class DSCLastErrorSensor(_DSCBaseSensor):
     @property
     def native_value(self) -> str | None:
         return self._coordinator.state.last_error_text
-
-
-class DSCLastOpEventSensor(_DSCBaseSensor):
-    """Last operational event (failed-to-arm, invalid code, lockout, etc.)."""
-
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-
-    def __init__(self, coordinator, entry_id, device_info):
-        super().__init__(
-            coordinator, entry_id, device_info, "last_op_event", "Last Op Event"
-        )
-
-    @property
-    def native_value(self) -> str | None:
-        return self._coordinator.state.last_op_event
 
 
 class DSCRecentEventsSensor(_DSCBaseSensor):

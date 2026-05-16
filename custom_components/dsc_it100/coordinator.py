@@ -20,8 +20,6 @@ State tracked
 - `last_event_time`          datetime of the most recent inbound frame
 - `last_event_code`          most recent inbound DSC code
 - `last_error_text`          most recent 501/502 error text
-- `last_op_event`            most recent operational/diagnostic event
-                             (failed-to-arm, invalid code, keypad lockout, …)
 - `duress_active`            True after a 620 (latched until manually reset
                              via the `dsc_it100.send_command` service or HA
                              restart — duress is too important to auto-clear)
@@ -51,13 +49,8 @@ from .const import (
     EVT_CMD_ACK,
     EVT_CMD_ERROR,
     EVT_DURESS_ALARM,
-    EVT_FAILED_TO_ARM,
-    EVT_FUNCTION_UNAVAILABLE,
-    EVT_INVALID_CODE,
-    EVT_KEYPAD_LOCKOUT,
     EVT_PARTIAL_CLOSING,
     EVT_PARTITION_ARMED,
-    EVT_PARTITION_BUSY,
     EVT_PARTITION_DISARMED,
     EVT_SPECIAL_CLOSING,
     EVT_SPECIAL_OPENING,
@@ -76,17 +69,6 @@ def signal_update(entry_id: str) -> str:
     """Return the dispatcher signal name for state updates of this entry."""
     return f"{DOMAIN}_{entry_id}_update"
 
-
-# Codes treated as operational/diagnostic events. These don't latch like
-# troubles do — they're transient notifications useful for troubleshooting
-# (especially arming failures).
-OP_EVENT_CODES = {
-    EVT_KEYPAD_LOCKOUT,
-    EVT_INVALID_CODE,
-    EVT_FUNCTION_UNAVAILABLE,
-    EVT_FAILED_TO_ARM,
-    EVT_PARTITION_BUSY,
-}
 
 # Anonymous/system close-open mapping
 ANON_ACTIONS = {
@@ -111,7 +93,6 @@ class DSCState:
     last_event_time: datetime | None = None
     last_event_code: str | None = None
     last_error_text: str | None = None
-    last_op_event: str | None = None
 
     duress_active: bool = False
     duress_user_id: str | None = None
@@ -190,8 +171,6 @@ class DSCIT100Coordinator:
             self._handle_partition_armed(data)
         elif code == EVT_PARTITION_DISARMED:
             self._handle_partition_disarmed(data)
-        elif code in OP_EVENT_CODES:
-            self._handle_op_event(code, data)
         elif code == EVT_CMD_ACK:
             _LOGGER.debug("DSC ack for command %s", data)
         elif code in (EVT_CMD_ERROR, EVT_SYSTEM_ERROR):
@@ -331,17 +310,3 @@ class DSCIT100Coordinator:
 
     def _handle_partition_disarmed(self, _data: str) -> None:
         self.state.last_arm_mode = None
-
-    def _handle_op_event(self, code: str, data: str) -> None:
-        """Operational/diagnostic events (failed-to-arm, lockout, etc.).
-
-        These don't have a latched on/off state — they fire once. We just
-        record the most recent one for the Last Op Event sensor and rely
-        on the recent-events log for history.
-        """
-        name = EVENT_NAMES.get(code, f"Op event {code}")
-        part = self._resolve_partition(data[:1]) if data else None
-        self.state.last_op_event = (
-            f"{name} (partition {part})" if part else name
-        )
-        _LOGGER.info("DSC op event: %s", self.state.last_op_event)
