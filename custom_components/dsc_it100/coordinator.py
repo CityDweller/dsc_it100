@@ -77,6 +77,27 @@ ANON_ACTIONS = {
     EVT_SPECIAL_OPENING: "special_disarmed",
 }
 
+# Codes whose first data byte is a 1-digit partition number. Used both to
+# render partition info on event log entries and to filter out events for
+# partitions the user hasn't configured in `partition_names`. The previous
+# logic guessed from "is the byte numeric?", which incorrectly treated
+# device/keypad numbers (e.g. on 822/828) as partitions.
+PARTITION_BEARING_CODES: frozenset[str] = frozenset({
+    "620",                                  # Duress Alarm (<part1><user4>)
+    "650", "651", "652", "653", "654",      # Partition state
+    "655", "656", "657",
+    "658", "659",                           # Keypad lockout / blanking
+    "670", "671", "672", "673",             # Operational events
+    "700", "701", "702",                    # User / special closings
+    "750", "751",                           # User / special openings
+    "900",                                  # Code required
+})
+
+# Codes that must always log to the ring buffer, even if their partition
+# isn't in the configured active set. Duress is too important to silently
+# suppress on the basis of which partition it fired on.
+ALWAYS_LOG_CODES: frozenset[str] = frozenset({EVT_DURESS_ALARM})
+
 
 @dataclass
 class DSCState:
@@ -194,23 +215,40 @@ class DSCIT100Coordinator:
         Each entry is a small dict suitable for direct exposure as an entity
         attribute. We pull user/partition out of the data where the code
         carries them.
+
+        When `partition_names` is configured, that set is treated as the
+        active partitions; events for partitions outside it are silently
+        dropped to keep the ring buffer focused (panels often emit busy /
+        not-ready events for unused partitions). Duress events bypass
+        this filter.
         """
+        raw_part = data[0] if code in PARTITION_BEARING_CODES and data else None
+
+        if (
+            raw_part
+            and code not in ALWAYS_LOG_CODES
+            and self.partition_names
+            and raw_part not in self.partition_names
+        ):
+            _LOGGER.debug(
+                "Skipping %s for inactive partition %s", code, raw_part
+            )
+            return
+
         entry: dict[str, Any] = {
             "time": when.isoformat(timespec="seconds"),
             "code": code,
             "name": EVENT_NAMES.get(code, f"Unknown {code}"),
         }
-
+        if raw_part:
+            entry["partition"] = self._resolve_partition(raw_part)
         # User-bearing codes: 620/700/750 have <part1><user4>
         if code in (EVT_DURESS_ALARM, EVT_USER_CLOSING, EVT_USER_OPENING) and len(data) >= 5:
-            entry["partition"] = self._resolve_partition(data[0])
             entry["user_id"] = data[1:5]
             entry["user"] = self._resolve_user(data[1:5])
-        # Partition-only codes: many 6xx and 7xx and 8xx with <part1> data
-        elif data and data[0].isdigit() and len(data) <= 2:
-            entry["partition"] = self._resolve_partition(data[:1])
-            if len(data) == 2 and code == EVT_PARTITION_ARMED:
-                entry["mode"] = ARM_MODES.get(data[1], "armed")
+        # Partition Armed (652) carries an arm-mode byte after the partition.
+        if code == EVT_PARTITION_ARMED and len(data) >= 2:
+            entry["mode"] = ARM_MODES.get(data[1], "armed")
 
         entry["summary"] = self._summarize(entry)
         self.state.recent_events.appendleft(entry)
