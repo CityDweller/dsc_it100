@@ -233,7 +233,25 @@ class DSCIT100Coordinator:
             if len(data) == 2 and code == EVT_PARTITION_ARMED:
                 entry["mode"] = ARM_MODES.get(data[1], "armed")
 
+        entry["summary"] = self._summarize(entry)
         self.state.recent_events.appendleft(entry)
+
+    @staticmethod
+    def _summarize(entry: dict[str, Any]) -> str:
+        """Render a one-line human summary of a buffered event."""
+        code = entry["code"]
+        name = entry["name"]
+        if code == EVT_DURESS_ALARM:
+            return f"DURESS by {entry['user']} on {entry['partition']}"
+        if code == EVT_USER_CLOSING:
+            return f"{entry['user']} armed {entry['partition']}"
+        if code == EVT_USER_OPENING:
+            return f"{entry['user']} disarmed {entry['partition']}"
+        if code == EVT_PARTITION_ARMED and "mode" in entry:
+            return f"{name} ({entry['mode']}) on {entry['partition']}"
+        if "partition" in entry:
+            return f"{name} on {entry['partition']}"
+        return name
 
     # ── Individual event handlers ────────────────────────────────────────────
 

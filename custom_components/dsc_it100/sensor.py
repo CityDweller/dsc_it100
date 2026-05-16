@@ -14,8 +14,9 @@ Entities:
   - Last Error          (most recent 501/502 error text, if any)
   - Last Op Event       (most recent operational event: failed-to-arm,
                          invalid code, keypad lockout, partition busy, …)
-  - Recent Events       (ring buffer of last 50 events as `recent_events`
-                         attribute; native value is the count)
+  - Recent Events       (one-line summary of the newest event as state;
+                         ring buffer of last 50 as `events` attribute and
+                         buffer occupancy as `count`)
 """
 
 from __future__ import annotations
@@ -201,10 +202,11 @@ class DSCLastOpEventSensor(_DSCBaseSensor):
 class DSCRecentEventsSensor(_DSCBaseSensor):
     """Ring buffer of recent panel events.
 
-    Native value is the count of buffered events; the actual log lives in
-    the `recent_events` extra-state attribute. Designed for the
-    Lovelace `markdown` / `auto-entities` cards to surface a panel-event
-    history without needing a separate database.
+    Native value is a one-line summary of the newest buffered event (e.g.
+    "Gaetan armed House"), so the entity is glanceable. The full log lives
+    in the `events` extra-state attribute and the buffer occupancy in
+    `count`. Designed for the Lovelace `markdown` / `auto-entities` cards
+    to surface a panel-event history without needing a separate database.
     """
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -215,10 +217,17 @@ class DSCRecentEventsSensor(_DSCBaseSensor):
         )
 
     @property
-    def native_value(self) -> int:
-        return len(self._coordinator.state.recent_events)
+    def native_value(self) -> str | None:
+        buf = self._coordinator.state.recent_events
+        if not buf:
+            return None
+        latest = buf[0]
+        return latest.get("summary") or latest.get("name")
 
     @property
     def extra_state_attributes(self) -> dict:
-        # Convert to a plain list so HA can serialise the state attribute.
-        return {"events": list(self._coordinator.state.recent_events)}
+        buf = self._coordinator.state.recent_events
+        return {
+            "count": len(buf),
+            "events": list(buf),
+        }
