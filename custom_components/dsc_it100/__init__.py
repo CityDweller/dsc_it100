@@ -28,11 +28,13 @@ from .const import (
     CONF_PARTITION_NAMES,
     CONF_PORT,
     CONF_USER_NAMES,
+    CONF_ZONE_MODELS,
     DATA_CONNECTION,
     DATA_COORDINATOR,
     DATA_LINKED_DEVICE_ID,
     DATA_OWN_DEVICE_INFO,
     DATA_ZONES,
+    DATA_ZONE_MODELS,
     DEFAULT_BAUDRATE,
     DOMAIN,
 )
@@ -63,6 +65,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     user_names = entry.options.get(CONF_USER_NAMES, {})
     partition_names = entry.options.get(CONF_PARTITION_NAMES, {})
+    zone_models = entry.options.get(CONF_ZONE_MODELS, {})
 
     # Raw RX/TX framing is logged via _LOGGER.debug — enable it by setting
     # the `custom_components.dsc_it100` logger to DEBUG (see README).
@@ -117,6 +120,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DATA_LINKED_DEVICE_ID: linked_device_info,
         DATA_OWN_DEVICE_INFO: own_device_info,
         DATA_ZONES: zones,
+        DATA_ZONE_MODELS: zone_models,
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

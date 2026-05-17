@@ -29,6 +29,7 @@ from .const import (
     DATA_LINKED_DEVICE_ID,
     DATA_OWN_DEVICE_INFO,
     DATA_ZONES,
+    DATA_ZONE_MODELS,
     DOMAIN,
     TROUBLE_LABELS,
 )
@@ -73,27 +74,62 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Create a trouble binary_sensor for each known DSC trouble key (on
-    the dsc_it100 device), plus the Duress Alarm and one per-zone battery
-    binary_sensor for every zone discovered from the linked AlarmDecoder
-    device (on the AlarmDecoder device card)."""
+    the dsc_it100 device), the Duress Alarm (on the linked AlarmDecoder
+    device), and one per-zone battery binary_sensor on its own per-zone
+    child device for every zone discovered from the linked AlarmDecoder
+    device. The child device's `via_device` points back at the linked
+    AlarmDecoder device so HA's device hierarchy shows them nested."""
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator: DSCIT100Coordinator = data[DATA_COORDINATOR]
     linked_device: DeviceInfo = data[DATA_LINKED_DEVICE_ID]
     own_device: DeviceInfo = data[DATA_OWN_DEVICE_INFO]
     zones: list[tuple[int, str]] = data.get(DATA_ZONES, [])
+    zone_models: dict[str, str] = data.get(DATA_ZONE_MODELS, {})
+
+    # via_device wants a single (domain, id) tuple. linked_device's
+    # identifiers set contains at least one — pick any; HA matches on any.
+    parent_identifier = next(iter(linked_device.get("identifiers", set())), None)
 
     entities: list = [
         DSCTroubleBinarySensor(coordinator, entry.entry_id, key, label, own_device)
         for key, label in TROUBLE_LABELS.items()
     ]
     entities.append(DSCDuressBinarySensor(coordinator, entry.entry_id, linked_device))
-    entities.extend(
-        DSCZoneBatterySensor(
-            coordinator, entry.entry_id, zone_num, zone_name, linked_device
+    for zone_num, zone_name in zones:
+        zone_device = _build_zone_device_info(
+            entry.entry_id, zone_num, zone_name, zone_models, parent_identifier
         )
-        for zone_num, zone_name in zones
-    )
+        entities.append(
+            DSCZoneBatterySensor(coordinator, entry.entry_id, zone_num, zone_device)
+        )
     async_add_entities(entities)
+
+
+def _build_zone_device_info(
+    entry_id: str,
+    zone_num: int,
+    zone_name: str,
+    zone_models: dict[str, str],
+    parent_identifier: tuple[str, str] | None,
+) -> DeviceInfo:
+    """Build the per-zone child DeviceInfo for a zone's battery sensor.
+
+    Each zone gets its own HA device so battery_notes' device-level
+    library matching can target it. `model` comes from the user-supplied
+    zone_models map (matched by stringified zone number); zones without
+    an entry fall back to a generic "Wireless Zone" model — those won't
+    auto-match in battery_notes' library but the entity still works.
+    """
+    model = zone_models.get(str(zone_num)) or "Wireless Zone"
+    info: DeviceInfo = DeviceInfo(
+        identifiers={(DOMAIN, f"{entry_id}_zone_{zone_num}")},
+        name=zone_name,
+        manufacturer="DSC",
+        model=model,
+    )
+    if parent_identifier is not None:
+        info["via_device"] = parent_identifier
+    return info
 
 
 class DSCTroubleBinarySensor(BinarySensorEntity):
@@ -191,11 +227,15 @@ class DSCDuressBinarySensor(BinarySensorEntity):
 class DSCZoneBatterySensor(BinarySensorEntity):
     """Per-zone wireless low-battery sensor (DSC codes 821 / 822).
 
-    One instance per zone discovered from the linked AlarmDecoder device.
-    `is_on` is True when the panel has reported a low battery for this
-    zone and not yet restored it. Uses the BATTERY device class so HA
-    renders it as a battery tile and battery_notes can pick it up
-    automatically.
+    One instance per zone discovered from the linked AlarmDecoder device,
+    each attached to its own per-zone child device (so battery_notes can
+    library-match per physical sensor model). `is_on` is True when the
+    panel has reported a low battery for this zone and not yet restored
+    it. Uses the BATTERY device class so HA renders it as a battery tile.
+
+    The entity name is just "Battery" — combined with the child device's
+    zone name by `has_entity_name=True`, HA renders e.g. "Front Door
+    Battery" in the UI.
 
     Wired zones won't ever fire 821, so their entity will sit at `off`
     forever — disable those manually in the entity registry if the
@@ -204,6 +244,7 @@ class DSCZoneBatterySensor(BinarySensorEntity):
 
     _attr_should_poll = False
     _attr_has_entity_name = True
+    _attr_name = "Battery"
     _attr_device_class = BinarySensorDeviceClass.BATTERY
 
     def __init__(
@@ -211,12 +252,10 @@ class DSCZoneBatterySensor(BinarySensorEntity):
         coordinator: DSCIT100Coordinator,
         entry_id: str,
         zone_num: int,
-        zone_name: str,
         device_info: DeviceInfo,
     ) -> None:
         self._coordinator = coordinator
         self._zone_num = zone_num
-        self._attr_name = f"{zone_name} Battery"
         self._attr_unique_id = f"{entry_id}_zone_{zone_num}_battery"
         self._attr_device_info = device_info
 

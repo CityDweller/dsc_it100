@@ -10,6 +10,10 @@ CONF_BAUDRATE = "baudrate"
 CONF_LINKED_ENTITY = "linked_entity_id"
 CONF_USER_NAMES = "user_names"    # {"0040": "Gaetan", "0001": "Master", ...}
 CONF_PARTITION_NAMES = "partition_names"  # {"1": "House", ...}
+CONF_ZONE_MODELS = "zone_models"  # {"1": "WS4945", "2": "WS4904", ...}
+                                   # Per-zone wireless-sensor model id; drives
+                                   # the model field on each per-zone child
+                                   # device so battery_notes can library-match.
 
 # hass.data keys
 DATA_CONNECTION = "connection"
@@ -26,6 +30,7 @@ DATA_LINKED_DEVICE_ID = "linked_device_id"
 # linked, so the integration has a visible device card of its own.
 DATA_OWN_DEVICE_INFO = "own_device_info"
 DATA_ZONES = "zones"
+DATA_ZONE_MODELS = "zone_models"
 
 DEFAULT_BAUDRATE = 9600
 

@@ -33,6 +33,7 @@ from .const import (
     CONF_PARTITION_NAMES,
     CONF_PORT,
     CONF_USER_NAMES,
+    CONF_ZONE_MODELS,
     DEFAULT_BAUDRATE,
     DOMAIN,
 )
@@ -139,6 +140,7 @@ class DSCIT100ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             options={
                 CONF_USER_NAMES: {},
                 CONF_PARTITION_NAMES: {},
+                CONF_ZONE_MODELS: {},
             },
         )
 
@@ -166,9 +168,10 @@ class DSCIT100OptionsFlow(config_entries.OptionsFlow):
         current_data = dict(self._config_entry.data)
 
         if user_input is not None:
-            # Parse comma-separated 'code:name' pairs from the user_names text
+            # Parse comma-separated 'code:name' pairs from each textbox
             new_user_names = _parse_pairs(user_input.get("user_names_raw", ""))
             new_part_names = _parse_pairs(user_input.get("partition_names_raw", ""))
+            new_zone_models = _parse_pairs(user_input.get("zone_models_raw", ""))
 
             # Linked entity lives in config_entry.data so it survives options
             # flow correctly; update via async_update_entry.
@@ -184,11 +187,13 @@ class DSCIT100OptionsFlow(config_entries.OptionsFlow):
                 data={
                     CONF_USER_NAMES: new_user_names,
                     CONF_PARTITION_NAMES: new_part_names,
+                    CONF_ZONE_MODELS: new_zone_models,
                 },
             )
 
         existing_users = current_opts.get(CONF_USER_NAMES, {})
         existing_parts = current_opts.get(CONF_PARTITION_NAMES, {})
+        existing_zones = current_opts.get(CONF_ZONE_MODELS, {})
 
         schema = vol.Schema(
             {
@@ -211,6 +216,20 @@ class DSCIT100OptionsFlow(config_entries.OptionsFlow):
                 vol.Optional(
                     "partition_names_raw",
                     default=_format_pairs(existing_parts),
+                ): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        multiline=True, type=selector.TextSelectorType.TEXT
+                    )
+                ),
+                # zone_models maps DSC zone number -> wireless-sensor model id
+                # (e.g. "1: WS4945"). The model ends up on the per-zone child
+                # device created for each zone's battery sensor, letting
+                # battery_notes library-match per-model and assign the right
+                # battery type. Zones without an entry get model="Wireless
+                # Zone" and won't auto-match.
+                vol.Optional(
+                    "zone_models_raw",
+                    default=_format_pairs(existing_zones),
                 ): selector.TextSelector(
                     selector.TextSelectorConfig(
                         multiline=True, type=selector.TextSelectorType.TEXT
