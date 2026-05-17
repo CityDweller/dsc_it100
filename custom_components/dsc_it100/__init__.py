@@ -31,6 +31,7 @@ from .const import (
     DATA_CONNECTION,
     DATA_COORDINATOR,
     DATA_LINKED_DEVICE_ID,
+    DATA_OWN_DEVICE_INFO,
     DATA_ZONES,
     DEFAULT_BAUDRATE,
     DOMAIN,
@@ -95,20 +96,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         zones=zones,
     )
 
-    # Resolve linked AlarmDecoder entity -> DeviceInfo we can hand to child
-    # platforms. We re-use the linked device's `identifiers`/`connections`,
-    # which causes HA to merge our entities into that existing device (this
-    # is how battery_notes attaches itself to source-entity devices).
-    #
-    # If the user didn't link anything, fall back to our own device card so
-    # the entities still show up somewhere coherent.
-    device_info = _resolve_device_info(hass, entry, linked_entity_id)
+    # Build two DeviceInfos:
+    #   - own_device_info: always points to *our* dsc_it100 device. Used
+    #     by entities that report on the integration / panel hardware
+    #     itself (troubles, diagnostics, recent event log).
+    #   - linked_device_info: points to the linked AlarmDecoder device
+    #     when one is configured, falling back to own_device_info if not.
+    #     Used by entities that conceptually belong with the alarm system
+    #     itself (user attribution, duress, per-zone batteries) so they
+    #     appear on the AlarmDecoder card alongside the zones.
+    own_device_info = _own_device_info(entry)
+    linked_device_info = _resolve_linked_device_info(
+        hass, linked_entity_id
+    ) or own_device_info
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         DATA_CONNECTION: connection,
         DATA_COORDINATOR: coordinator,
-        DATA_LINKED_DEVICE_ID: device_info,
+        DATA_LINKED_DEVICE_ID: linked_device_info,
+        DATA_OWN_DEVICE_INFO: own_device_info,
         DATA_ZONES: zones,
     }
 
@@ -194,40 +201,53 @@ def _discover_alarmdecoder_zones(
     return zones
 
 
-def _resolve_device_info(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    linked_entity_id: str | None,
-) -> DeviceInfo:
-    """Build the DeviceInfo our entities should advertise.
+def _own_device_info(entry: ConfigEntry) -> DeviceInfo:
+    """Build the DeviceInfo for the dsc_it100 device itself.
 
-    If `linked_entity_id` resolves to an existing device, re-use that
-    device's identifiers so HA merges our entities into the same device.
-    Otherwise build a standalone DSC IT-100 device.
+    Always returns a fresh DeviceInfo keyed by config entry id, so each
+    configured panel ends up with its own dsc_it100 device card.
     """
-    if linked_entity_id:
-        ent_reg = er.async_get(hass)
-        dev_reg = dr.async_get(hass)
-        ent_entry = ent_reg.async_get(linked_entity_id)
-        if ent_entry and ent_entry.device_id:
-            dev_entry = dev_reg.async_get(ent_entry.device_id)
-            if dev_entry and dev_entry.identifiers:
-                # Re-use identifiers only; HA preserves the existing device's
-                # name/manufacturer/model when we don't set them here.
-                return DeviceInfo(identifiers=set(dev_entry.identifiers))
-        _LOGGER.warning(
-            "Linked entity %s has no resolvable device; DSC IT-100 entities "
-            "will be created on a standalone device instead",
-            linked_entity_id,
-        )
-
-    # Standalone fallback — one device per config entry
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
         name="DSC IT-100",
         manufacturer="DSC",
         model="PC5401",
     )
+
+
+def _resolve_linked_device_info(
+    hass: HomeAssistant,
+    linked_entity_id: str | None,
+) -> DeviceInfo | None:
+    """Return DeviceInfo pointing at the linked AlarmDecoder device.
+
+    Returns None if no entity was linked or the link can't be resolved —
+    callers should fall back to the own dsc_it100 device in that case.
+    Re-uses the linked device's identifiers only; HA preserves the
+    existing device's name/manufacturer/model when we don't set them.
+    """
+    if not linked_entity_id:
+        return None
+
+    ent_reg = er.async_get(hass)
+    dev_reg = dr.async_get(hass)
+    ent_entry = ent_reg.async_get(linked_entity_id)
+    if not (ent_entry and ent_entry.device_id):
+        _LOGGER.warning(
+            "Linked entity %s not found in the registry; panel-side "
+            "entities will fall back to the dsc_it100 device",
+            linked_entity_id,
+        )
+        return None
+    dev_entry = dev_reg.async_get(ent_entry.device_id)
+    if not (dev_entry and dev_entry.identifiers):
+        _LOGGER.warning(
+            "Linked entity %s has no resolvable device; panel-side "
+            "entities will fall back to the dsc_it100 device",
+            linked_entity_id,
+        )
+        return None
+    return DeviceInfo(identifiers=set(dev_entry.identifiers))
 
 
 # ── Services ─────────────────────────────────────────────────────────────────

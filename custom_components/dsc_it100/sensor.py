@@ -28,7 +28,12 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DATA_COORDINATOR, DATA_LINKED_DEVICE_ID, DOMAIN
+from .const import (
+    DATA_COORDINATOR,
+    DATA_LINKED_DEVICE_ID,
+    DATA_OWN_DEVICE_INFO,
+    DOMAIN,
+)
 from .coordinator import DSCIT100Coordinator, signal_update
 
 
@@ -39,18 +44,23 @@ async def async_setup_entry(
 ) -> None:
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator: DSCIT100Coordinator = data[DATA_COORDINATOR]
-    device_info: DeviceInfo = data[DATA_LINKED_DEVICE_ID]
+    # User-attribution sensors describe panel activity — they go on the
+    # linked AlarmDecoder device card alongside the panel state.
+    # Diagnostic sensors describe the IT-100 serial stream itself — they
+    # go on the dsc_it100 device card.
+    linked_device: DeviceInfo = data[DATA_LINKED_DEVICE_ID]
+    own_device: DeviceInfo = data[DATA_OWN_DEVICE_INFO]
 
     async_add_entities(
         [
-            DSCLastUserSensor(coordinator, entry.entry_id, device_info),
-            DSCLastUserCodeSensor(coordinator, entry.entry_id, device_info),
-            DSCLastActionSensor(coordinator, entry.entry_id, device_info),
-            DSCLastArmModeSensor(coordinator, entry.entry_id, device_info),
-            DSCLastEventSensor(coordinator, entry.entry_id, device_info),
-            DSCLastEventCodeSensor(coordinator, entry.entry_id, device_info),
-            DSCLastErrorSensor(coordinator, entry.entry_id, device_info),
-            DSCRecentEventsSensor(coordinator, entry.entry_id, device_info),
+            DSCLastUserSensor(coordinator, entry.entry_id, linked_device),
+            DSCLastUserCodeSensor(coordinator, entry.entry_id, linked_device),
+            DSCLastActionSensor(coordinator, entry.entry_id, linked_device),
+            DSCLastArmModeSensor(coordinator, entry.entry_id, linked_device),
+            DSCLastEventSensor(coordinator, entry.entry_id, own_device),
+            DSCLastEventCodeSensor(coordinator, entry.entry_id, own_device),
+            DSCLastErrorSensor(coordinator, entry.entry_id, own_device),
+            DSCRecentEventsSensor(coordinator, entry.entry_id, own_device),
         ]
     )
 

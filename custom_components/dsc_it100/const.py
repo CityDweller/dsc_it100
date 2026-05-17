@@ -14,7 +14,17 @@ CONF_PARTITION_NAMES = "partition_names"  # {"1": "House", ...}
 # hass.data keys
 DATA_CONNECTION = "connection"
 DATA_COORDINATOR = "coordinator"
+# DeviceInfo for the *panel* device — entities that conceptually belong with
+# the alarm system (user attribution, duress, per-zone batteries) attach
+# here. Points to the linked AlarmDecoder device when one is configured;
+# falls back to the dsc_it100 device when nothing is linked, so a no-link
+# install ends up with one device holding everything.
 DATA_LINKED_DEVICE_ID = "linked_device_id"
+# DeviceInfo for the dsc_it100 device — entities that are about this
+# integration / the IT-100 serial link (troubles, diagnostics, recent
+# event log) attach here. Always present, even when AlarmDecoder is
+# linked, so the integration has a visible device card of its own.
+DATA_OWN_DEVICE_INFO = "own_device_info"
 DATA_ZONES = "zones"
 
 DEFAULT_BAUDRATE = 9600

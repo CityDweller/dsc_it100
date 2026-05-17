@@ -27,6 +27,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import (
     DATA_COORDINATOR,
     DATA_LINKED_DEVICE_ID,
+    DATA_OWN_DEVICE_INFO,
     DATA_ZONES,
     DOMAIN,
     TROUBLE_LABELS,
@@ -71,22 +72,24 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Create a trouble binary_sensor for each known DSC trouble key, plus
-    one per-zone battery binary_sensor for every zone discovered from the
-    linked AlarmDecoder device."""
+    """Create a trouble binary_sensor for each known DSC trouble key (on
+    the dsc_it100 device), plus the Duress Alarm and one per-zone battery
+    binary_sensor for every zone discovered from the linked AlarmDecoder
+    device (on the AlarmDecoder device card)."""
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator: DSCIT100Coordinator = data[DATA_COORDINATOR]
-    device_info: DeviceInfo = data[DATA_LINKED_DEVICE_ID]
+    linked_device: DeviceInfo = data[DATA_LINKED_DEVICE_ID]
+    own_device: DeviceInfo = data[DATA_OWN_DEVICE_INFO]
     zones: list[tuple[int, str]] = data.get(DATA_ZONES, [])
 
     entities: list = [
-        DSCTroubleBinarySensor(coordinator, entry.entry_id, key, label, device_info)
+        DSCTroubleBinarySensor(coordinator, entry.entry_id, key, label, own_device)
         for key, label in TROUBLE_LABELS.items()
     ]
-    entities.append(DSCDuressBinarySensor(coordinator, entry.entry_id, device_info))
+    entities.append(DSCDuressBinarySensor(coordinator, entry.entry_id, linked_device))
     entities.extend(
         DSCZoneBatterySensor(
-            coordinator, entry.entry_id, zone_num, zone_name, device_info
+            coordinator, entry.entry_id, zone_num, zone_name, linked_device
         )
         for zone_num, zone_name in zones
     )
