@@ -4,8 +4,7 @@ Creates user-attribution and diagnostic sensors that attach to the linked
 AlarmDecoder device (if configured).
 
 Entities:
-  - Last User           (name)
-  - Last User Code      (4-digit user code)
+  - Last User           (name; raw 4-digit code is on the `user_id` attribute)
   - Last User Action    (armed / disarmed / special_armed / partial_armed /
                          special_disarmed / duress)
   - Last Arm Mode       (away / stay / zero_entry_away / zero_entry_stay)
@@ -54,7 +53,6 @@ async def async_setup_entry(
     async_add_entities(
         [
             DSCLastUserSensor(coordinator, entry.entry_id, linked_device),
-            DSCLastUserCodeSensor(coordinator, entry.entry_id, linked_device),
             DSCLastActionSensor(coordinator, entry.entry_id, linked_device),
             DSCLastArmModeSensor(coordinator, entry.entry_id, linked_device),
             DSCLastEventSensor(coordinator, entry.entry_id, own_device),
@@ -114,19 +112,6 @@ class DSCLastUserSensor(_DSCBaseSensor):
             "partition": st.last_user_partition,
             "action": st.last_user_action,
         }
-
-
-class DSCLastUserCodeSensor(_DSCBaseSensor):
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-
-    def __init__(self, coordinator, entry_id, device_info):
-        super().__init__(
-            coordinator, entry_id, device_info, "last_user_code", "Last User Code"
-        )
-
-    @property
-    def native_value(self) -> str | None:
-        return self._coordinator.state.last_user_id
 
 
 class DSCLastActionSensor(_DSCBaseSensor):
