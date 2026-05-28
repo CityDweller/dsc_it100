@@ -6,7 +6,7 @@
   "issue_tracker": "https://github.com/CityDweller/dsc_it100/issues",
   "requirements": ["serialx>=0.1.0"],
   "dependencies": [],
-  "codeowners": [],
+  "codeowners": ["@CityDweller"],
   "config_flow": true,
   "iot_class": "local_push",
   "single_config_entry": true
