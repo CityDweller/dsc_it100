@@ -19,6 +19,11 @@ jobs:
         uses: hacs/action@main
         with:
           category: integration
+          # 'brands' is validated against the home-assistant/brands repo,
+          # which is a separate submission made around hacs/default
+          # acceptance time. Ignore it here so CI stays green until that
+          # brands PR is merged; remove this line once it is.
+          ignore: brands
 
   hassfest:
     name: Hassfest (HA manifest validation)

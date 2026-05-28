@@ -1,13 +1,13 @@
 {
   "domain": "dsc_it100",
   "name": "DSC IT-100",
-  "version": "0.1.0",
-  "documentation": "https://github.com/CityDweller/dsc_it100",
-  "issue_tracker": "https://github.com/CityDweller/dsc_it100/issues",
-  "requirements": ["serialx>=0.1.0"],
-  "dependencies": [],
   "codeowners": ["@CityDweller"],
   "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/CityDweller/dsc_it100",
   "iot_class": "local_push",
-  "single_config_entry": true
+  "issue_tracker": "https://github.com/CityDweller/dsc_it100/issues",
+  "requirements": ["serialx>=0.1.0"],
+  "single_config_entry": true,
+  "version": "0.1.0"
 }
