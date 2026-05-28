@@ -9,3 +9,7 @@ venv/
 .DS_Store
 *.log
 .commit-msg.tmp
+
+# Personal working notes / publishing checklist — not part of the
+# shipped integration, kept local only.
+docs/
